@@ -9,5 +9,11 @@ __pycache__/
 # System files
 .DS_Store
 
+# Kaggle inference dataset
+test_unlabeled.pkl
+
 # Saved models
 saved_models/
+
+# Saved predictions
+saved_predictions/
