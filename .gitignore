@@ -8,3 +8,6 @@ __pycache__/
 
 # System files
 .DS_Store
+
+# Saved models
+saved_models/

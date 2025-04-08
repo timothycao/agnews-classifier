@@ -1,2 +1,4 @@
+datasets==3.5.0
 peft==0.15.1
+scikit-learn==1.6.1
 transformers==4.51.0
