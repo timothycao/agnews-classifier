@@ -1,6 +1,7 @@
 from datasets import load_dataset
 from sklearn.metrics import accuracy_score
 from transformers import RobertaTokenizer, DataCollatorWithPadding, TrainingArguments, Trainer
+from peft import LoraConfig
 from model import create_lora_model
 
 
@@ -59,8 +60,16 @@ def main(model, training_args, checkpoint=None):
 
 
 if __name__ == '__main__':
-    # model = create_lora_model()
-    model = create_lora_model(target_modules=['query', 'key', 'value'])
+    lora_config = LoraConfig(
+        r=2,
+        lora_alpha=4,
+        lora_dropout=0.05,
+        bias='none',
+        target_modules=['query', 'key', 'value'],
+        task_type='SEQ_CLS'
+    )
+
+    model = create_lora_model(lora_config)
     
     training_args = TrainingArguments(
         # Core training configs
@@ -81,7 +90,7 @@ if __name__ == '__main__':
         save_steps=100,
 
         # Miscellaneous
-        report_to=None,
+        report_to='none',
         dataloader_num_workers=4,
         gradient_checkpointing=False,
         gradient_checkpointing_kwargs={'use_reentrant':True}
