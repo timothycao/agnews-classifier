@@ -1,6 +1,8 @@
+import os
+import pandas as pd
 from datasets import load_dataset
 from sklearn.metrics import accuracy_score
-from transformers import RobertaTokenizer, DataCollatorWithPadding, TrainingArguments, Trainer
+from transformers import RobertaTokenizer, DataCollatorWithPadding, TrainingArguments, TrainerCallback, Trainer
 from peft import LoraConfig
 from model import create_lora_model
 
@@ -44,6 +46,33 @@ class CustomTrainer(Trainer):
         
         # Call original log method to log default metrics
         super().log(logs, *args, **kwargs)
+
+
+# Callback to save flattened log history csv for each checkpoint
+class CustomCallback(TrainerCallback):
+    def on_save(self, args, state, control, **kwargs):
+        output_dir = os.path.join(args.output_dir, f'checkpoint-{state.global_step}')
+        
+        # Flatten training and evaluation logs by step
+        flattened_log_history = {}
+        for log in state.log_history:
+            step = log.get('step')
+            if step is None:
+                continue
+
+            if step not in flattened_log_history:
+                flattened_log_history[step] = {}
+            
+            # Merge logs with the same step
+            for key, value in log.items():
+                flattened_log_history[step][key] = value
+
+        # Convert to DataFrame and sort by step
+        df = pd.DataFrame(list(flattened_log_history.values()))
+        df.sort_values(by='step', inplace=True)
+
+        # Save to csv file in the checkpoint directory
+        df.to_csv(os.path.join(output_dir, 'log_history.csv'), index=False)
 
 
 def preprocess_function(examples, tokenizer):
@@ -90,7 +119,8 @@ def main(model, training_args, checkpoint=None):
         compute_metrics=compute_eval_metrics,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        data_collator=data_collator
+        data_collator=data_collator,
+        callbacks=[CustomCallback()]
     )
 
     # Train the model
