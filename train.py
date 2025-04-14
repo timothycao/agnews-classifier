@@ -72,6 +72,7 @@ class CustomCallback(TrainerCallback):
         # Save to csv file in the checkpoint directory
         df.to_csv(os.path.join(output_dir, 'log_history.csv'), index=False)
 
+        # Select columns for processed logs
         desired_columns = [
             "step",         
             "loss",         
@@ -99,7 +100,7 @@ class CustomCallback(TrainerCallback):
         # Rename columns in the DataFrame
         processed_logs_df.rename(columns=rename_mapping, inplace=True)
 
-        # Add additional columns for loss spread/ratio and accuracy spread/ratio
+        # Add additional columns for loss spread/ratio and accuracy spread/ratio 
         if "Train Loss" in processed_logs_df.columns and "Test Loss" in processed_logs_df.columns:
             processed_logs_df["Loss Spread"] = processed_logs_df["Train Loss"] - processed_logs_df["Test Loss"]
             processed_logs_df["Loss Ratio"] = processed_logs_df["Train Loss"] / processed_logs_df["Test Loss"]
