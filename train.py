@@ -47,26 +47,28 @@ class CustomTrainer(Trainer):
         # Call original log method to log default metrics
         super().log(logs, *args, **kwargs)
 
+
+# Callback to save flattened and processed log history csvs for each checkpoint
 class CustomCallback(TrainerCallback):
     def on_save(self, args, state, control, **kwargs):
         output_dir = os.path.join(args.output_dir, f'checkpoint-{state.global_step}')
         
-        # Collapse training and evaluation logs by step
-        collapsed_log_history = {}
+        # Flatten training and evaluation logs by step
+        flattened_log_history = {}
         for log in state.log_history:
             step = log.get('step')
             if step is None:
                 continue
 
-            if step not in collapsed_log_history:
-                collapsed_log_history[step] = {}
+            if step not in flattened_log_history:
+                flattened_log_history[step] = {}
             
             # Merge logs with the same step
             for key, value in log.items():
-                collapsed_log_history[step][key] = value
+                flattened_log_history[step][key] = value
 
         # Convert to DataFrame and sort by step
-        df = pd.DataFrame(list(collapsed_log_history.values()))
+        df = pd.DataFrame(list(flattened_log_history.values()))
         df.sort_values(by='step', inplace=True)
 
         # Save to csv file in the checkpoint directory
@@ -74,13 +76,13 @@ class CustomCallback(TrainerCallback):
 
         # Select columns for processed logs
         desired_columns = [
-            "step",         
-            "loss",         
-            "eval_loss",   
-            "accuracy",     
-            "eval_accuracy",
-            "learning_rate",
-            "epoch" 
+            'step',         
+            'loss',         
+            'eval_loss',   
+            'accuracy',     
+            'eval_accuracy',
+            'learning_rate',
+            'epoch' 
         ]
 
         # Copy only the desired columns to a new DataFrame
@@ -88,29 +90,30 @@ class CustomCallback(TrainerCallback):
 
         # Rename columns for clarity and readability
         rename_mapping = {
-            "step": "Step",
-            "loss": "Train Loss",
-            "eval_loss": "Test Loss",
-            "accuracy": "Train Acc",
-            "eval_accuracy": "Test Acc",
-            "learning_rate": "Learning Rate",
-            "epoch": "Epochs"
+            'step': 'Step',
+            'loss': 'Train Loss',
+            'eval_loss': 'Test Loss',
+            'accuracy': 'Train Acc',
+            'eval_accuracy': 'Test Acc',
+            'learning_rate': 'Learning Rate',
+            'epoch': 'Epochs'
         }
 
         # Rename columns in the DataFrame
         processed_logs_df.rename(columns=rename_mapping, inplace=True)
 
         # Add additional columns for loss spread/ratio and accuracy spread/ratio 
-        if "Train Loss" in processed_logs_df.columns and "Test Loss" in processed_logs_df.columns:
-            processed_logs_df["Loss Spread"] = processed_logs_df["Train Loss"] - processed_logs_df["Test Loss"]
-            processed_logs_df["Loss Ratio"] = processed_logs_df["Train Loss"] / processed_logs_df["Test Loss"]
+        if 'Train Loss' in processed_logs_df.columns and 'Test Loss' in processed_logs_df.columns:
+            processed_logs_df['Loss Spread'] = processed_logs_df['Train Loss'] - processed_logs_df['Test Loss']
+            processed_logs_df['Loss Ratio'] = processed_logs_df['Train Loss'] / processed_logs_df['Test Loss']
 
-        if "Train Acc" in processed_logs_df.columns and "Test Acc" in processed_logs_df.columns:
-            processed_logs_df["Acc Spread"] = processed_logs_df["Train Acc"] - processed_logs_df["Test Acc"]
-            processed_logs_df["Acc Ratio"] = processed_logs_df["Train Acc"] / processed_logs_df["Test Acc"]
+        if 'Train Acc' in processed_logs_df.columns and 'Test Acc' in processed_logs_df.columns:
+            processed_logs_df['Acc Spread'] = processed_logs_df['Train Acc'] - processed_logs_df['Test Acc']
+            processed_logs_df['Acc Ratio'] = processed_logs_df['Train Acc'] / processed_logs_df['Test Acc']
 
         # Save to csv file in the checkpoint directory
         processed_logs_df.to_csv(os.path.join(output_dir, 'processed_log_history.csv'), index=False)
+
 
 def preprocess_function(examples, tokenizer):
     return tokenizer(examples['text'], truncation=True, padding=True)
@@ -182,7 +185,7 @@ if __name__ == '__main__':
     training_args = TrainingArguments(
         # Core training configs
         # num_train_epochs=1,
-        max_steps=2,
+        max_steps=100,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=64,
         optim='adamw_torch',
@@ -190,12 +193,12 @@ if __name__ == '__main__':
 
         # Logging, evaluation, and checkpointing
         logging_strategy='steps',
-        logging_steps=1,
+        logging_steps=20,
         eval_strategy='steps',
-        eval_steps=1,
+        eval_steps=20,
         output_dir='saved_models',
         save_strategy='steps',
-        save_steps=1,
+        save_steps=20,
 
         # Miscellaneous
         report_to='none',
